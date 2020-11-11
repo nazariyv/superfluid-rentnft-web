@@ -6,6 +6,8 @@
   "dependencies": {
     "@material-ui/core": "^4.11.0",
     "@material-ui/lab": "^4.0.0-alpha.56",
+    "@superfluid-finance/ethereum-contracts": "^0.1.2-preview-20201014-fix5",
+    "@truffle/contract": "^4.2.29",
     "@types/classnames": "^2.2.11",
     "@types/identicon.js": "^2.3.0",
     "@types/moment": "^2.13.0",

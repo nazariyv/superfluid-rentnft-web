@@ -5,7 +5,7 @@ export const getGanFace = async () => {
       method: "GET",
       headers: {
         "x-rapidapi-host": "face-generator.p.rapidapi.com",
-        "x-rapidapi-key": process.env.GATSBY_RAPID_API_KEY,
+        "x-rapidapi-key": process.env.RAPID_API_KEY,
         useQueryString: "true",
       },
     }

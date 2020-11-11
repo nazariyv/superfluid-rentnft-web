@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Box } from "@material-ui/core";
 
 // components and other
@@ -8,6 +8,7 @@ import Lend from "./Lend";
 import ButHow from "./ButHow";
 import Stats from "./Stats";
 import MintNft from "./MintNFT";
+import useSuperfluid from "./Superfluid";
 import Leaderboard from "./Leaderboard";
 import useFakeDai from "../hooks/useFakeDai";
 
@@ -52,14 +53,21 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState(Tabs.RENT);
   const [nftModalOpen, setNftModalOpen] = useState(false);
   const requestDai = useFakeDai();
+  const { mvp } = useSuperfluid();
 
   const handleNftModal = useCallback(() => {
     setNftModalOpen(!nftModalOpen);
   }, [nftModalOpen]);
 
+  // useEffect(() => {
+  //   if (!mvp) return;
+  //   mvp();
+  // }, [mvp]);
+
   // TODO: rewrite with a router
   return (
     <Layout>
+      <button onClick={() => mvp()}>Superfluid</button>
       <Box
         style={{
           display: "flex",
