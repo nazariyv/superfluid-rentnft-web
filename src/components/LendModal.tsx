@@ -10,6 +10,9 @@ import RainbowButton from "./RainbowButton";
 import Modal from "./Modal";
 import CssTextField from "./CssTextField";
 import { Address } from "../types";
+import { addresses } from "../contracts";
+// todo: this is in components, move to hooks
+import useSuperfluid from "./Superfluid";
 
 // TODO: this is a copy of what we have in RentModal
 const useStyles = makeStyles({
@@ -60,8 +63,9 @@ type NftAndId = {
 
 const LendModal: React.FC<LendModalProps> = ({ faceId, open, setOpen }) => {
   const classes = useStyles();
-  const { rent, face } = useContext(ContractsContext);
-  const { web3 } = useContext(DappContext);
+  const { rent, erc721 } = useContext(ContractsContext);
+  const { web3, wallet } = useContext(DappContext);
+  const { sf, createFlow, perMonth, tradeableCashflow } = useSuperfluid();
 
   const [lendOneInputs, setLendOneInputs] = useState<LendOneInputs>({
     maxDuration: {
@@ -78,7 +82,7 @@ const LendModal: React.FC<LendModalProps> = ({ faceId, open, setOpen }) => {
     },
   });
 
-  const getNftAndId: NftAndId = useMemo(() => {
+  const nftAndId: NftAndId = useMemo(() => {
     const parts = faceId.split("::");
     if (parts.length < 2) {
       return {
@@ -94,36 +98,65 @@ const LendModal: React.FC<LendModalProps> = ({ faceId, open, setOpen }) => {
 
   const [isBusy, setIsBusy] = useState(false);
 
-  const handleLend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!web3) return;
+  const handleLend = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!web3 || !wallet?.account) return;
 
-    setIsBusy(true);
-    try {
-      const tokenId = faceId.split("::")[1];
-      await rent.lendOne(
-        tokenId,
-        // ! careful. will fail if the stablecoin / ERC20 is not 18 decimals
-        lendOneInputs.maxDuration.value,
-        web3.utils.toWei(
-          Number(lendOneInputs.borrowPrice.value).toFixed(18),
-          "ether"
-        ),
-        web3.utils.toWei(
-          Number(lendOneInputs.nftPrice.value).toFixed(18),
-          "ether"
-        )
-      );
-    } catch (err) {
-      // ! TODO: NOTIFICATION THAT SOMETHING WENT WRONG
-      // TRELLO TASK: https://trello.com/c/FUhFdVR4/48-2-add-notifications-anywhere-you-can
-      console.debug("could not complete the lending");
-    }
+      setIsBusy(true);
+      try {
+        // create tradeable cashflow NFT and send to yourself
+        // send the actual NFT you want to lend to our contract
 
-    // show green check mark somewhere too
-    setIsBusy(false);
-    setOpen(false);
-  };
+        // todo: ouch expensive and ouch awful code
+        const res = await tradeableCashflow
+          ?.deploy({
+            data: "0x",
+            arguments: [
+              wallet?.account,
+              "FranTradeableCashflow",
+              "TCF",
+              sf.host.address,
+              sf.agreements.cfa.address,
+              addresses.goerli.daix,
+            ],
+          })
+          .send({ from: wallet?.account });
+        const cashflowAddress = res._address;
+
+        // now take the address of the flow above and supply it to rent NFT (so that we can compute stats later on)
+        await rent.lendOne(
+          nftAndId.nftAddress,
+          nftAndId.tokenId,
+          lendOneInputs.maxDuration.value,
+          web3.utils.toWei(Number(lendOneInputs.borrowPrice.value).toFixed(18)),
+          web3.utils.toWei(
+            Number(lendOneInputs.nftPrice.value).toFixed(18),
+            "ether"
+          ),
+          cashflowAddress
+        );
+      } catch (err) {
+        // ! TODO: NOTIFICATION THAT SOMETHING WENT WRONG
+        // TRELLO TASK: https://trello.com/c/FUhFdVR4/48-2-add-notifications-anywhere-you-can
+        console.debug("could not complete the lending");
+      }
+
+      // show green check mark somewhere too
+      setIsBusy(false);
+      setOpen(false);
+    },
+    [
+      lendOneInputs,
+      web3,
+      wallet,
+      rent,
+      setOpen,
+      sf,
+      tradeableCashflow,
+      nftAndId,
+    ]
+  );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // ! this wasted an hour of my life: https://duncanleung.com/fixing-react-warning-synthetic-events-in-setstate/
@@ -165,13 +198,14 @@ const LendModal: React.FC<LendModalProps> = ({ faceId, open, setOpen }) => {
     setIsBusy(true);
 
     try {
-      await face.approveOfAllFaces();
+      await erc721.approveAll(nftAndId.nftAddress, addresses.goerli.rent);
     } catch (e) {
+      console.error(e);
       console.debug("could not approve all the faces");
     }
 
     setIsBusy(false);
-  }, [face]);
+  }, [erc721, nftAndId.nftAddress]);
 
   const handleClose = useCallback(() => setOpen(false), [setOpen]);
 
@@ -247,6 +281,7 @@ const LendModal: React.FC<LendModalProps> = ({ faceId, open, setOpen }) => {
             className="Product__button"
             onClick={handleApproveAll}
             onSubmit={preventDefault}
+            disabled={isBusy}
           >
             Approve all
           </button>

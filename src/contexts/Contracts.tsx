@@ -9,8 +9,12 @@ import { Contract } from "web3-eth-contract";
 
 import DappContext from "./Dapp";
 import { abis, addresses } from "../contracts";
+import { Address } from "../types";
 
 type ContractsContextType = {
+  erc721: {
+    approveAll: (nft: Address, operator: Address) => void;
+  };
   pmtToken: {
     dai: {
       contract?: Contract;
@@ -19,16 +23,17 @@ type ContractsContextType = {
   };
   face: {
     contract?: Contract;
-    approveOfAllFaces: () => void;
   };
   rent: {
     contract?: Contract;
     // TODO: lendOne and rentOne here need to take NFT address to generalise this
     lendOne: (
+      nft: Address,
       tokenId: string,
       maxDuration: string,
       borrowPrice: string,
-      nftPrice: string
+      nftPrice: string,
+      cashflow: Address
     ) => void;
     rentOne: (tokenId: string, rentDuration: string) => void;
     returnOne: (nftAddress: string, tokenId: string) => void;
@@ -36,6 +41,11 @@ type ContractsContextType = {
 };
 
 const DefaultContractsContext = {
+  erc721: {
+    approveAll: () => {
+      throw new Error("must be implemented");
+    },
+  },
   pmtToken: {
     dai: {
       approve: () => {
@@ -44,9 +54,9 @@ const DefaultContractsContext = {
     },
   },
   face: {
-    approveOfAllFaces: () => {
-      throw new Error("must be implemented");
-    },
+    // approveOfAllFaces: () => {
+    //   throw new Error("must be implemented");
+    // },
   },
   rent: {
     lendOne: () => {
@@ -108,6 +118,7 @@ export const ContractsProvider: React.FC<ContractsProviderProps> = ({
     setDai(contract);
   }, [web3, dai, dappOk]);
 
+  // * this is factory face contract now! do not approve with it
   const getFaceContract = useCallback(async () => {
     if (!dappOk()) return;
     if (face != null) return;
@@ -139,14 +150,27 @@ export const ContractsProvider: React.FC<ContractsProviderProps> = ({
   }, [getAllContracts]);
 
   // TODO: get graph field for all approvals for checkz. and make a bool field somewhere
-  const approveOfAllFaces = useCallback(async () => {
-    if (!dappOk(face)) return;
+  // const approveOfAllFaces = useCallback(async () => {
+  //   if (!dappOk(face)) return;
 
-    // todo: checkdapp typeguard against nulls
-    await face?.methods
-      .setApprovalForAll(addresses.goerli.rent, true)
-      .send({ from: wallet?.account });
-  }, [face, dappOk, wallet?.account]);
+  //   // todo: checkdapp typeguard against nulls
+  //   await face?.methods
+  //     .setApprovalForAll(addresses.goerli.rent, true)
+  //     .send({ from: wallet?.account });
+  // }, [face, dappOk, wallet?.account]);
+
+  const approveAll = useCallback(
+    async (nft, operator) => {
+      if (!dappOk()) return;
+
+      // todo: bad code
+      const contract = new web3!.eth.Contract(abis.erc721.abi, nft);
+      await contract.methods
+        .setApprovalForAll(operator, true)
+        .send({ from: wallet?.account });
+    },
+    [dappOk, wallet?.account, web3]
+  );
 
   // infinite approval of the payment token
   const approveDai = useCallback(async () => {
@@ -180,21 +204,19 @@ export const ContractsProvider: React.FC<ContractsProviderProps> = ({
   // lend one NFT
   const lendOne = useCallback(
     async (
+      nft: Address,
       tokenId: string,
       maxDuration: string,
       borrowPrice: string,
-      nftPrice: string
+      nftPrice: string,
+      cashflow: Address
     ) => {
       if (!dappOk(rent)) return;
 
+      // todo: bad code
+
       await rent?.methods
-        .lendOne(
-          addresses.goerli.face,
-          tokenId,
-          maxDuration,
-          borrowPrice,
-          nftPrice
-        )
+        .lendOne(nft, tokenId, maxDuration, borrowPrice, nftPrice, cashflow)
         .send({ from: wallet?.account });
     },
     [wallet?.account, rent, dappOk]
@@ -216,13 +238,17 @@ export const ContractsProvider: React.FC<ContractsProviderProps> = ({
   return (
     <ContractsContext.Provider
       value={{
+        erc721: {
+          approveAll,
+        },
         pmtToken: {
           dai: {
             contract: dai,
             approve: approveDai,
           },
         },
-        face: { contract: face, approveOfAllFaces },
+        // face: { contract: face, approveOfAllFaces },
+        face: { contract: face },
         rent: { contract: rent, lendOne, rentOne, returnOne },
       }}
     >
