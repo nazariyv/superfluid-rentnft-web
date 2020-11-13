@@ -10,7 +10,7 @@ import RainbowButton from "./RainbowButton";
 import Modal from "./Modal";
 import CssTextField from "./CssTextField";
 import { Address } from "../types";
-import { addresses } from "../contracts";
+import { abis, addresses } from "../contracts";
 // todo: this is in components, move to hooks
 import useSuperfluid from "./Superfluid";
 
@@ -111,7 +111,7 @@ const LendModal: React.FC<LendModalProps> = ({ faceId, open, setOpen }) => {
         // todo: ouch expensive and ouch awful code
         const res = await tradeableCashflow
           ?.deploy({
-            data: "0x",
+            data: abis.goerli.tradeableCashflow.bytecode,
             arguments: [
               wallet?.account,
               "FranTradeableCashflow",

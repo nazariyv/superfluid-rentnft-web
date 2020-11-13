@@ -41,10 +41,14 @@ const useSuperfluid = () => {
   }, [web3, successfulInit, initSf]);
 
   // todo: bad code. also superfluid sdk must have a util for this
-  const perMonth = useCallback(
+  const perSecond = useCallback(
     (perDayAmt: number): string => {
       if (!web3) return "";
-      return web3.utils.toWei(String(perDayAmt * 3600 * 24 * 30), "ether");
+      const secondAmt = (perDayAmt / (3600 * 24)) * 1e18;
+      return web3.utils.toBN(Math.round(secondAmt)).toString();
+      // todo: should this be 10e18? (that's what superfluid docs show; but that would be 19 decimal places)
+      // return web3.utils.toBN(secondAmt).mul(web3.utils.toBN("1e18")).toString();
+      // return web3.utils.toWei(String(secondAmt), "ether");
     },
     [web3]
   );
@@ -74,6 +78,25 @@ const useSuperfluid = () => {
     const contract = new web3.eth.Contract(abis.goerli.tradeableCashflow.abi);
     return contract;
   }, [web3]);
+
+  //  todo: awful hardcode
+  const requestfDai = useCallback(async () => {
+    if (!sf || !wallet || !web3) return;
+    // const daiAddress = await sf.resolver.get("tokens.fDAI");
+    const daiAddress = addresses.goerli.dai;
+    const dai = await sf.contracts.TestToken.at(daiAddress);
+    await dai.mint(wallet?.account, web3?.utils.toWei("1000", "ether"), {
+      from: wallet?.account,
+    });
+    // const daixWrapper = await sf.getERC20Wrapper(dai);
+    const daix = await sf.contracts.ISuperToken.at(addresses.goerli.daix);
+    await dai.approve(daix.address, "1" + "0".repeat(42), {
+      from: wallet?.account,
+    });
+    await daix.upgrade(web3?.utils.toWei("1000", "ether"), {
+      from: wallet?.account,
+    });
+  }, [sf, wallet, web3]);
 
   // const mvp = useCallback(async () => {
   // if (!sf || !wallet) return;
@@ -116,7 +139,8 @@ const useSuperfluid = () => {
     // mvp,
     sf,
     tradeableCashflow,
-    perMonth,
+    requestfDai,
+    perSecond,
     createFlow,
     updateFlow,
     deleteFlow,

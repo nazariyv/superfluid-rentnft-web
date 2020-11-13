@@ -52,8 +52,7 @@ const Tab: React.FC<TabProps> = ({
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState(Tabs.RENT);
   const [nftModalOpen, setNftModalOpen] = useState(false);
-  const requestDai = useFakeDai();
-  // const { mvp } = useSuperfluid();
+  const { requestfDai } = useSuperfluid();
 
   const handleNftModal = useCallback(() => {
     setNftModalOpen(!nftModalOpen);
@@ -93,7 +92,11 @@ const App: React.FC = () => {
           thisTab={Tabs.LEADER}
           buttonName="Leaderboard"
         />
-        <div role="button" style={{ marginRight: "16px" }} onClick={requestDai}>
+        <div
+          role="button"
+          style={{ marginRight: "16px" }}
+          onClick={requestfDai}
+        >
           <span
             className={
               activeTab === Tabs.GETNFT ? "active-tab" : "Product__button"

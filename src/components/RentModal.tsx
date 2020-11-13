@@ -5,13 +5,17 @@ import * as R from "ramda";
 import moment from "moment";
 
 // contexts
+import DappContext from "../contexts/Dapp";
 import ContractsContext from "../contexts/Contracts";
+
 import FunnySpinner from "./Spinner";
 import RainbowButton from "./RainbowButton";
 import CssTextField from "./CssTextField";
 import Modal from "./Modal";
 import useSuperfluid from "./Superfluid";
+import { addresses } from "../contracts";
 
+const MIL_AMT = "1000000000000000000000000";
 const SENSIBLE_MAX_DURATION = 10 * 365;
 
 const useStyles = makeStyles(() =>
@@ -62,7 +66,8 @@ const RentModal: React.FC<RentModalProps> = ({
   maxDuration,
 }) => {
   const classes = useStyles();
-  const { rent, pmtToken } = useContext(ContractsContext);
+  const { rent, erc20 } = useContext(ContractsContext);
+  const { web3 } = useContext(DappContext);
   const [duration, setDuration] = useState<string>("");
   const [busy, setIsBusy] = useState(false);
   const [totalRent, setTotalRent] = useState(0);
@@ -70,7 +75,7 @@ const RentModal: React.FC<RentModalProps> = ({
   const [errorText, setErrorText] = useState(DEFAULT_ERROR_TEXT);
   const [returnDate, setReturnDate] = useState("");
   // TODO: context. now there are two instances of useSuperfluid
-  const { createFlow, perMonth } = useSuperfluid();
+  const { createFlow, perSecond } = useSuperfluid();
 
   const resetState = useCallback(() => {
     setInputsValid(false);
@@ -146,31 +151,34 @@ const RentModal: React.FC<RentModalProps> = ({
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
+
       try {
         // todo: use nftAndId memo
         const parts = faceId.split("::");
         const nft = parts[0];
         const tokenId = parts[1];
 
-        if (
-          !rent ||
-          !pmtToken ||
-          !R.hasPath(["dai", "approve"], pmtToken) ||
-          rentIsDisabled
-        ) {
+        if (!rent || !erc20 || rentIsDisabled) {
           console.debug("can't rent");
           return;
         }
 
         setIsBusy(true);
 
-        const tradeableCashflow = await rent.getLastCashflow(nft);
+        const tradeableCashflow = await rent.getLastCashflow(
+          web3.utils.toChecksumAddress(nft)
+        );
+        const perSecondAmt = perSecond(borrowPrice);
         // todo: note that cashflow is decoupled from rentOne. refactor lol. time pressures
-        await createFlow(tradeableCashflow, perMonth(borrowPrice));
+        await createFlow(tradeableCashflow, perSecondAmt);
 
-        // await pmtToken.dai.approve();
-        await rent.rentOne(nft, tokenId, duration);
+        await rent.rentOne(
+          web3?.utils.toChecksumAddress(nft),
+          tokenId,
+          duration
+        );
       } catch (err) {
+        console.error(err);
         console.debug("something went wrong");
         // TODO: give a notification here as well
       }
@@ -179,27 +187,32 @@ const RentModal: React.FC<RentModalProps> = ({
     },
     [
       rent,
-      pmtToken,
+      erc20,
       duration,
       faceId,
       rentIsDisabled,
       handleClose,
+      web3,
       borrowPrice,
       createFlow,
-      perMonth,
+      perSecond,
     ]
   );
 
   const handleApprove = useCallback(async () => {
     try {
       setIsBusy(true);
-      await pmtToken.dai.approve();
+      await erc20.approve(
+        addresses.goerli.daix,
+        addresses.goerli.rent,
+        MIL_AMT
+      );
     } catch (err) {
       handleClose();
       console.debug("could not approve");
     }
     setIsBusy(false);
-  }, [pmtToken, handleClose]);
+  }, [erc20, handleClose]);
 
   return (
     <Modal open={open} handleClose={handleClose}>
@@ -261,7 +274,7 @@ const RentModal: React.FC<RentModalProps> = ({
             onClick={handleApprove}
             disabled={busy}
           >
-            Approve fDAI
+            Approve fDAIx
           </button>
           {/* TODO: visual cues to indicate that Rent button is disabled */}
           {/* TODO: consider adding form to be consistent (like in LendModal) */}

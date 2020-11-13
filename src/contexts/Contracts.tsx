@@ -15,6 +15,9 @@ type ContractsContextType = {
   erc721: {
     approveAll: (nft: Address, operator: Address) => void;
   };
+  erc20: {
+    approve: (token: Address, spender: Address, amount: string) => void;
+  };
   pmtToken: {
     dai: {
       contract?: Contract;
@@ -44,6 +47,11 @@ type ContractsContextType = {
 const DefaultContractsContext = {
   erc721: {
     approveAll: () => {
+      throw new Error("must be implemented");
+    },
+  },
+  erc20: {
+    approve: () => {
       throw new Error("must be implemented");
     },
   },
@@ -166,6 +174,18 @@ export const ContractsProvider: React.FC<ContractsProviderProps> = ({
     [dappOk, wallet?.account, web3]
   );
 
+  const approve = useCallback(
+    async (token, spender, amount) => {
+      if (!dappOk()) return;
+
+      const contract = new web3.eth.Contract(abis.erc20.abi, token);
+      await contract.methods
+        .approve(spender, amount)
+        .send({ from: wallet?.account });
+    },
+    [dappOk, wallet?.account, web3]
+  );
+
   // infinite approval of the payment token
   const approveDai = useCallback(async () => {
     if (!dappOk(dai)) return;
@@ -187,7 +207,8 @@ export const ContractsProvider: React.FC<ContractsProviderProps> = ({
           wallet?.account,
           nft,
           web3?.utils.hexToNumberString(tokenId),
-          rentDuration
+          rentDuration,
+          web3.eth.abi.encodeParameter("bytes", web3.utils.stringToHex("DAI"))
         )
         .send({ from: wallet?.account });
     },
@@ -227,7 +248,7 @@ export const ContractsProvider: React.FC<ContractsProviderProps> = ({
   );
 
   const getLastCashflow = useCallback(
-    async (nft: Address): Promise<string[]> => {
+    async (nft: Address): Promise<string> => {
       if (!dappOk(rent)) return [];
       const cashflow = await rent?.methods.getLastCashflow(nft).call();
       return cashflow;
@@ -243,6 +264,9 @@ export const ContractsProvider: React.FC<ContractsProviderProps> = ({
         erc721: {
           approveAll,
         },
+        erc20: {
+          approve,
+        },
         pmtToken: {
           dai: {
             contract: dai,
@@ -250,7 +274,13 @@ export const ContractsProvider: React.FC<ContractsProviderProps> = ({
           },
         },
         face: { contract: face },
-        rent: { contract: rent, lendOne, rentOne, returnOne, getLastCashflow },
+        rent: {
+          contract: rent,
+          lendOne,
+          rentOne,
+          returnOne,
+          getLastCashflow,
+        },
       }}
     >
       {children}
