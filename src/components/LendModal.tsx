@@ -5,13 +5,11 @@ import { makeStyles } from "@material-ui/core/styles";
 // contexts
 import ContractsContext from "../contexts/Contracts";
 import DappContext from "../contexts/Dapp";
-import GraphContext from "../contexts/Graph";
 import FunnySpinner from "./Spinner";
 import RainbowButton from "./RainbowButton";
 import Modal from "./Modal";
 import CssTextField from "./CssTextField";
 import { Address } from "../types";
-import { addresses } from "../contracts";
 
 // TODO: this is a copy of what we have in RentModal
 const useStyles = makeStyles({
@@ -64,7 +62,6 @@ const LendModal: React.FC<LendModalProps> = ({ faceId, open, setOpen }) => {
   const classes = useStyles();
   const { rent, face } = useContext(ContractsContext);
   const { web3 } = useContext(DappContext);
-  const { isApproved: _isApproved } = useContext(GraphContext);
 
   const [lendOneInputs, setLendOneInputs] = useState<LendOneInputs>({
     maxDuration: {
@@ -94,13 +91,6 @@ const LendModal: React.FC<LendModalProps> = ({ faceId, open, setOpen }) => {
       tokenId: parts[1],
     };
   }, [faceId]);
-
-  // TODO: to avoid complexity of sustaining the approve events and this additional logic around
-  // checking if approved, just add a call to the ERC721 to check if approved and keep in state
-  const isApproved = useMemo(() => {
-    const { nftAddress, tokenId } = getNftAndId;
-    return _isApproved(addresses.goerli.rent, nftAddress, tokenId);
-  }, [_isApproved, getNftAndId]);
 
   const [isBusy, setIsBusy] = useState(false);
 
@@ -253,7 +243,6 @@ const LendModal: React.FC<LendModalProps> = ({ faceId, open, setOpen }) => {
             type="button"
             style={{
               border: "3px solid black",
-              display: isApproved ? "none" : "inherit",
             }}
             className="Product__button"
             onClick={handleApproveAll}
@@ -261,7 +250,7 @@ const LendModal: React.FC<LendModalProps> = ({ faceId, open, setOpen }) => {
           >
             Approve all
           </button>
-          <Box style={{ display: isApproved ? "inherit" : "none" }}>
+          <Box>
             <RainbowButton
               type="submit"
               text="Lend"

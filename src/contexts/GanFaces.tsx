@@ -76,23 +76,18 @@ export const GanFacesProvider: React.FC<GanFacesProps> = ({ children }) => {
     try {
       setGanStages(GanFaceStages.PinningToIpfs);
 
-      if (face == null) {
+      if (!face) {
         console.debug("can't mint when there is no face");
         return;
       }
 
-      if (
-        web3 == null ||
-        faceContext.contract == null ||
-        wallet == null ||
-        !wallet.account
-      ) {
+      if (!web3 || !faceContext.contract || !wallet || !wallet.account) {
         console.debug("awaiting web3 and faceContract and wallet.account");
         return;
       }
 
       const pin = await pinToIpfs({ blob: face });
-      if (pin == null) {
+      if (!pin) {
         console.debug("no pin");
         return;
       }
@@ -101,8 +96,14 @@ export const GanFacesProvider: React.FC<GanFacesProps> = ({ children }) => {
       setIpfsUri(uri);
       setGanStages(GanFaceStages.Minting);
 
+      // await faceContext.contract.methods
+      //   .awardGanFace(wallet.account, uri)
+      //   .send({ from: wallet.account });
+
+      // this will deploy an NFT contract. i.e. this won't mint
+      // a new token id withn an existing NFT contract. i.e. expensive!
       await faceContext.contract.methods
-        .awardGanFace(wallet.account, uri)
+        .newFace(wallet.account, uri)
         .send({ from: wallet.account });
 
       setGanStages(GanFaceStages.Idle);

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { Box } from "@material-ui/core";
 
 // components and other
@@ -53,21 +53,15 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState(Tabs.RENT);
   const [nftModalOpen, setNftModalOpen] = useState(false);
   const requestDai = useFakeDai();
-  const { mvp } = useSuperfluid();
+  // const { mvp } = useSuperfluid();
 
   const handleNftModal = useCallback(() => {
     setNftModalOpen(!nftModalOpen);
   }, [nftModalOpen]);
 
-  // useEffect(() => {
-  //   if (!mvp) return;
-  //   mvp();
-  // }, [mvp]);
-
   // TODO: rewrite with a router
   return (
     <Layout>
-      <button onClick={() => mvp()}>Superfluid</button>
       <Box
         style={{
           display: "flex",
