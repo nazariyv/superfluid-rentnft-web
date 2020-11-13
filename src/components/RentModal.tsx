@@ -10,6 +10,7 @@ import FunnySpinner from "./Spinner";
 import RainbowButton from "./RainbowButton";
 import CssTextField from "./CssTextField";
 import Modal from "./Modal";
+import useSuperfluid from "./Superfluid";
 
 const SENSIBLE_MAX_DURATION = 10 * 365;
 
@@ -68,6 +69,8 @@ const RentModal: React.FC<RentModalProps> = ({
   const [inputsValid, setInputsValid] = useState(true);
   const [errorText, setErrorText] = useState(DEFAULT_ERROR_TEXT);
   const [returnDate, setReturnDate] = useState("");
+  // TODO: context. now there are two instances of useSuperfluid
+  const { createFlow, perMonth } = useSuperfluid();
 
   const resetState = useCallback(() => {
     setInputsValid(false);
@@ -144,8 +147,10 @@ const RentModal: React.FC<RentModalProps> = ({
     async (e: React.FormEvent) => {
       e.preventDefault();
       try {
-        // TODO: to generalise, will need to use tokenAddress here too
-        const tokenId = faceId.split("::")[1];
+        // todo: use nftAndId memo
+        const parts = faceId.split("::");
+        const nft = parts[0];
+        const tokenId = parts[1];
 
         if (
           !rent ||
@@ -158,8 +163,13 @@ const RentModal: React.FC<RentModalProps> = ({
         }
 
         setIsBusy(true);
+
+        const tradeableCashflow = await rent.getLastCashflow(nft);
+        // todo: note that cashflow is decoupled from rentOne. refactor lol. time pressures
+        await createFlow(tradeableCashflow, perMonth(borrowPrice));
+
         // await pmtToken.dai.approve();
-        await rent.rentOne(tokenId, duration);
+        await rent.rentOne(nft, tokenId, duration);
       } catch (err) {
         console.debug("something went wrong");
         // TODO: give a notification here as well
@@ -167,7 +177,17 @@ const RentModal: React.FC<RentModalProps> = ({
       setIsBusy(false);
       handleClose();
     },
-    [rent, pmtToken, duration, faceId, rentIsDisabled, handleClose]
+    [
+      rent,
+      pmtToken,
+      duration,
+      faceId,
+      rentIsDisabled,
+      handleClose,
+      borrowPrice,
+      createFlow,
+      perMonth,
+    ]
   );
 
   const handleApprove = useCallback(async () => {

@@ -65,7 +65,7 @@ const LendModal: React.FC<LendModalProps> = ({ faceId, open, setOpen }) => {
   const classes = useStyles();
   const { rent, erc721 } = useContext(ContractsContext);
   const { web3, wallet } = useContext(DappContext);
-  const { sf, createFlow, perMonth, tradeableCashflow } = useSuperfluid();
+  const { sf, tradeableCashflow } = useSuperfluid();
 
   const [lendOneInputs, setLendOneInputs] = useState<LendOneInputs>({
     maxDuration: {

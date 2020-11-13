@@ -35,8 +35,9 @@ type ContractsContextType = {
       nftPrice: string,
       cashflow: Address
     ) => void;
-    rentOne: (tokenId: string, rentDuration: string) => void;
-    returnOne: (nftAddress: string, tokenId: string) => void;
+    rentOne: (nft: Address, tokenId: string, rentDuration: string) => void;
+    returnOne: (nft: Address, tokenId: string) => void;
+    getLastCashflow: (nft: Address) => Promise<string>;
   };
 };
 
@@ -66,6 +67,9 @@ const DefaultContractsContext = {
       throw new Error("must be implemented");
     },
     returnOne: () => {
+      throw new Error("must be implemented");
+    },
+    getLastCashflow: () => {
       throw new Error("must be implemented");
     },
   },
@@ -149,22 +153,12 @@ export const ContractsProvider: React.FC<ContractsProviderProps> = ({
     getAllContracts();
   }, [getAllContracts]);
 
-  // TODO: get graph field for all approvals for checkz. and make a bool field somewhere
-  // const approveOfAllFaces = useCallback(async () => {
-  //   if (!dappOk(face)) return;
-
-  //   // todo: checkdapp typeguard against nulls
-  //   await face?.methods
-  //     .setApprovalForAll(addresses.goerli.rent, true)
-  //     .send({ from: wallet?.account });
-  // }, [face, dappOk, wallet?.account]);
-
   const approveAll = useCallback(
     async (nft, operator) => {
       if (!dappOk()) return;
 
       // todo: bad code
-      const contract = new web3!.eth.Contract(abis.erc721.abi, nft);
+      const contract = new web3.eth.Contract(abis.erc721.abi, nft);
       await contract.methods
         .setApprovalForAll(operator, true)
         .send({ from: wallet?.account });
@@ -185,14 +179,13 @@ export const ContractsProvider: React.FC<ContractsProviderProps> = ({
 
   // rent one NFT
   const rentOne = useCallback(
-    async (tokenId: string, rentDuration: string) => {
+    async (nft: Address, tokenId: string, rentDuration: string) => {
       if (!dappOk(rent)) return;
 
-      // ! TODO: change for the address of the NFT
       await rent?.methods
         .rentOne(
           wallet?.account,
-          addresses.goerli.face,
+          nft,
           web3?.utils.hexToNumberString(tokenId),
           rentDuration
         )
@@ -223,14 +216,23 @@ export const ContractsProvider: React.FC<ContractsProviderProps> = ({
   );
 
   const returnOne = useCallback(
-    async (nftAddress: string, tokenId: string) => {
+    async (nft: Address, tokenId: string) => {
       if (!dappOk(rent)) return;
 
       await rent?.methods
-        .returnNftOne(nftAddress, tokenId)
+        .returnNftOne(nft, tokenId)
         .send({ from: wallet?.account });
     },
     [dappOk, wallet?.account, rent]
+  );
+
+  const getLastCashflow = useCallback(
+    async (nft: Address): Promise<string[]> => {
+      if (!dappOk(rent)) return [];
+      const cashflow = await rent?.methods.getLastCashflow(nft).call();
+      return cashflow;
+    },
+    [dappOk, rent]
   );
 
   // ---------------------------------------------------------------
@@ -247,9 +249,8 @@ export const ContractsProvider: React.FC<ContractsProviderProps> = ({
             approve: approveDai,
           },
         },
-        // face: { contract: face, approveOfAllFaces },
         face: { contract: face },
-        rent: { contract: rent, lendOne, rentOne, returnOne },
+        rent: { contract: rent, lendOne, rentOne, returnOne, getLastCashflow },
       }}
     >
       {children}
