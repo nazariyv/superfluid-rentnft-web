@@ -31,7 +31,8 @@ const DefaultGraphContext: GraphContextType = {
 
 const GraphContext = createContext<GraphContextType>(DefaultGraphContext);
 
-const ENDPOINT = "https://api.thegraph.com/subgraphs/name/nazariyv/rentnft";
+const ENDPOINT =
+  "https://api.thegraph.com/subgraphs/name/nazariyv/superfluidrentft";
 
 const queryNft = `{
   nfts {
