@@ -17,8 +17,8 @@ export const pinToIpfs = async ({ blob }) => {
     });
     data.append("pinataOptions", pinataOptions);
 
-    const pinataApiKey = process.env.PINATA_API_KEY;
-    const pinataSecretKey = process.env.PINATA_SECRET_API_KEY;
+    const pinataApiKey = process.env.GATSBY_PINATA_API_KEY;
+    const pinataSecretKey = process.env.GATSBY_PINATA_SECRET_API_KEY;
 
     if (!pinataApiKey || !pinataSecretKey) {
       console.error("please define pinata api and secret keys (process.env)");
